@@ -51,15 +51,16 @@ modules:
 
   - id: knowledge
     name: "知识大脑"
-    description: "RAG 检索增强 + Mem0 记忆 + 工作流编排"
+    description: "Obsidian vault 知识库 + 语音输入纠错 + markdown 全文索引与搜索"
     version: "0.1.0"
     tier: pro
-    transport: sse
-    command: tars-wing-knowledge
+    transport: stdio
+    command: knowledge
     env:
-      - name: MEM0_API_KEY
-        value: "${MEM0_API_KEY}"
-    repo_url: "https://github.com/HP-jh/TarsWingKnowledge"
+      - name: OBSIDIAN_VAULT
+        value: "${OBSIDIAN_VAULT}"
+    repo_url: "https://github.com/HP-jh/TarsWingGuard"
+    doc_url: "https://github.com/HP-jh/TarsWingGuard/wiki/knowledge"
 
   - id: vision
     name: "视觉雷达"
@@ -98,6 +99,20 @@ modules:
     repo_url: "https://github.com/HP-jh/TarsSecureGuard"
 
   # ── Ultimate tier (旗舰加成) ────────────────────────────────────────
+  - id: knowledge-extreme
+    name: "知识大脑·极致档"
+    description: "知识库隔离模式：敏感文档沙箱索引 + 分级访问控制"
+    version: "0.1.0"
+    tier: ultimate
+    transport: stdio
+    command: knowledge
+    args: ["-vault", "${OBSIDIAN_VAULT_EXTREME}"]
+    env:
+      - name: OBSIDIAN_VAULT_EXTREME
+        value: "${OBSIDIAN_VAULT_EXTREME}"
+    deps: [knowledge]
+    repo_url: "https://github.com/HP-jh/TarsWingGuard"
+
   - id: extreme
     name: "极致档"
     description: "深度防御模式：全规则集 + 行为分析 + 自动响应"

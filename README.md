@@ -102,11 +102,12 @@ iwr -useb https://raw.githubusercontent.com/HP-jh/TarsWingGuard/main/install.ps1
 | `core-rbac` | 核心权限 | basic | RBAC 基础实现 |
 | `core-audit` | 核心审计 | basic | 审计日志 + 哈希链 |
 | `wing-guard` | **羽翼防护** | pro | 高级 WAF + RASP + 零信任 |
-| `knowledge` | 知识大脑 | pro | RAG + Mem0 + 工作流 |
+| `knowledge` | **知识大脑** | pro | Obsidian 知识库 + 语音纠错 + markdown 索引 |
 | `vision` | 视觉雷达 | pro | UI-TARS Bridge + 截图分析 |
 | `multi-channel` | 多渠道网关 | pro | IM / Email / Webhook |
 | `whiteboard` | 画板工作流 | pro | Mermaid / PlantUML 渲染 |
 | `monitor` | 监控雷达 | pro | Prometheus + Grafana |
+| `knowledge-extreme` | 知识大脑·极致档 | ultimate | 敏感文档沙箱索引 + 分级访问 |
 | `extreme` | 极致档 | ultimate | 深度防御 + 行为分析 |
 | `orchestration` | 协作编排 | ultimate | 多智能体协作 (LobeHub) |
 | `enterprise` | 企业版 | ultimate | SSO / 审计合规 / 组织管理 |
@@ -133,7 +134,7 @@ wingctl -catalog wing.yaml -dry-run
 
 ## MCP Server Demo
 
-`wing-guard` 是一个完整的 MCP server 实现，支持 stdio / SSE / streamable 三 transport：
+### wing-guard（羽翼防护）
 
 ```bash
 # stdio 模式（与 Claude Desktop / Cursor 等集成）
@@ -143,24 +144,71 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize"}' | wing-guard -transport st
 # -> tools/call wing_guard_scan {"payload":"<script>alert(1)</script>"}
 ```
 
+### knowledge（知识大脑）
+
+连接 Obsidian vault，支持语音输入纠错：
+
+```bash
+# 启动并自动索引 vault
+knowledge -vault ~/Obsidian
+
+# 或通过环境变量
+export OBSIDIAN_VAULT=~/Obsidian
+knowledge
+
+# MCP 工具：
+# -> tools/call knowledge_search {"query":"ni hao security"}  # 语音纠错后搜索
+# -> tools/call knowledge_index {"vault_path":"/path/to/vault"}
+# -> tools/call knowledge_status
+```
+
+语音纠错支持：中文拼音（`ni hao` → `你好`）、英文常见 ASR 错误（`teh` → `the`）。
+
+## 知识库 + Obsidian 集成
+
+```json
+{
+  "wing": {
+    "mode": "tier",
+    "tier": "pro"
+  }
+}
+```
+
+pro 档自动包含 `knowledge` 模块。启动前设置：
+
+```bash
+export OBSIDIAN_VAULT=/path/to/your/Obsidian
+```
+
+knowledge MCP server 会：
+1. 自动遍历 vault 下所有 `.md` 文件
+2. 解析 YAML frontmatter 和标签
+3. 建立全文索引
+4. 对搜索查询应用语音纠错
+
+ultimate 档额外包含 `knowledge-extreme`：敏感文档独立沙箱索引，通过 `OBSIDIAN_VAULT_EXTREME` 指定隔离 vault。
+
 ## 项目结构
 
 ```
 TarsWingGuard/
 ├── cmd/
 │   ├── wingctl/          # 目录 CLI 工具
-│   └── wing-guard/       # 羽翼防护 MCP server 演示
+│   ├── wing-guard/       # 羽翼防护 MCP server 演示
+│   └── knowledge/        # 知识大脑 MCP server 演示
 ├── pkg/
 │   ├── catalog/          # 模块目录解析
 │   ├── tier/             # 套餐解析器 (basic/pro/ultimate)
 │   ├── mcp/              # MCP server 框架 (stdio/SSE/streamable)
 │   └── config/           # TSG config.json 集成
 ├── internal/
-│   └── guard/            # wing-guard 模块实现
-├── wing.yaml             # 官方模块清单（13 模块）
+│   ├── guard/            # wing-guard 模块实现
+│   └── knowledge/        # 知识库 + Obsidian + voice_correction
+├── wing.yaml             # 官方模块清单（14 模块）
 ├── wing.example.yaml     # 配置模板
-├── install.sh            # Linux/macOS 一键安装
-├── install.ps1           # Windows 一键安装
+├── install.sh            # Linux/macOS 一键安装（7 步含知识库配置）
+├── install.ps1           # Windows 一键安装（7 步含知识库配置）
 └── Makefile              # 构建脚本
 ```
 
@@ -178,7 +226,7 @@ TarsWingGuard/
 
 ## 路线图
 
-- **v0.1.0** ✅ 仓库骨架 + 13 模块 catalog + tier 解析器 + MCP demo + 安装向导
+- **v0.1.0** ✅ 仓库骨架 + 14 模块 catalog + tier 解析器 + wing-guard/knowledge 双 MCP demo + 安装向导
 - **v0.2.x** 接入 B33 完成的 30+ 版本能力（逐模块上线）
 - **v0.3.0** 接入 B36 TarsEnterprise 企业版
 - **v0.4.0** 接入 B37 OpenClawSandbox 智能体沙箱

@@ -30,10 +30,22 @@ modules:
     name: "知识大脑"
     version: "0.1.0"
     tier: pro
-    transport: sse
-    command: tars-wing-knowledge
+    transport: stdio
+    command: knowledge
+    env:
+      - name: OBSIDIAN_VAULT
+        value: "/path/to/your/Obsidian"
 
   # 旗舰层（ultimate 专属）
+  - id: knowledge-extreme
+    name: "知识大脑·极致档"
+    version: "0.1.0"
+    tier: ultimate
+    transport: stdio
+    command: knowledge
+    args: ["-vault", "/path/to/sensitive/vault"]
+    deps: [knowledge]
+
   - id: extreme
     name: "极致档"
     version: "0.1.0"

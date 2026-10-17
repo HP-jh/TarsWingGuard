@@ -27,12 +27,12 @@ echo "========================================"
 echo ""
 
 # Step 1: welcome
-echo "[1/6] 欢迎使用 TarsWingGuard 安装向导"
+echo "[1/7] 欢迎使用 TarsWingGuard 安装向导"
 echo "      平台: ${OS}/${ARCH}"
 echo ""
 
 # Step 2: check dependencies
-echo "[2/6] 检查依赖..."
+echo "[2/7] 检查依赖..."
 MISSING=""
 command -v curl >/dev/null 2>&1 || MISSING="$MISSING curl"
 if [ -n "$MISSING" ]; then
@@ -43,8 +43,28 @@ fi
 echo "      依赖检查通过"
 echo ""
 
-# Step 3: download
-echo "[3/6] 下载 ${BINARY}..."
+# Step 3: knowledge config prompt (before download)
+echo "[3/7] 知识库配置（可选）..."
+echo "      是否启用 Obsidian 知识库? [y/N]"
+read -r enable_kb < /dev/tty 2>/dev/null || enable_kb="n"
+OBSIDIAN_VAULT=""
+ENABLE_VOICE=""
+if [[ "$enable_kb" =~ ^[Yy]$ ]]; then
+  echo "      请输入 Obsidian vault 路径 (如 /home/user/Obsidian):"
+  read -r OBSIDIAN_VAULT < /dev/tty 2>/dev/null || true
+  echo "      是否启用语音输入纠错? [y/N]"
+  read -r voice < /dev/tty 2>/dev/null || voice="n"
+  if [[ "$voice" =~ ^[Yy]$ ]]; then
+    ENABLE_VOICE="true"
+  fi
+  echo "      知识库配置完成"
+else
+  echo "      跳过知识库配置"
+fi
+echo ""
+
+# Step 4: download
+echo "[4/7] 下载 ${BINARY}..."
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
@@ -56,8 +76,8 @@ chmod +x "${TMPDIR}/twg"
 echo "      下载完成"
 echo ""
 
-# Step 4: verify checksum (if available)
-echo "[4/6] 校验文件..."
+# Step 5: verify checksum (if available)
+echo "[5/7] 校验文件..."
 CHECKSUM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/SHA256SUMS.txt"
 if curl -fsSL -o "${TMPDIR}/SHA256SUMS.txt" "$CHECKSUM_URL" 2>/dev/null; then
   cd "$TMPDIR"
@@ -72,8 +92,8 @@ else
 fi
 echo ""
 
-# Step 5: install
-echo "[5/6] 安装到 ${INSTALL_DIR}..."
+# Step 6: install
+echo "[6/7] 安装到 ${INSTALL_DIR}..."
 if [ -w "$INSTALL_DIR" ]; then
   cp "${TMPDIR}/twg" "${INSTALL_DIR}/twg"
   cp "${TMPDIR}/twg" "${INSTALL_DIR}/wing-guard" 2>/dev/null || true
@@ -85,12 +105,12 @@ fi
 echo "      安装完成"
 echo ""
 
-# Step 6: setup config
-echo "[6/6] 初始化配置..."
+# Step 7: setup config
+echo "[7/7] 初始化配置..."
 CONFIG_DIR="${HOME}/.config/tarswingguard"
 mkdir -p "$CONFIG_DIR"
 if [ ! -f "${CONFIG_DIR}/wing.yaml" ]; then
-  cat > "${CONFIG_DIR}/wing.yaml" <<'EOF'
+  cat > "${CONFIG_DIR}/wing.yaml" <<EOF
 version: "0.1.0"
 schema: wing/v1
 core:
@@ -105,10 +125,28 @@ modules:
     transport: stdio
     command: wing-guard
     deps: [core-waf]
+  - id: knowledge
+    name: "知识大脑"
+    version: "0.1.0"
+    tier: pro
+    transport: stdio
+    command: knowledge
+    env:
+      - name: OBSIDIAN_VAULT
+        value: "${OBSIDIAN_VAULT}"
 EOF
   echo "      已创建默认配置: ${CONFIG_DIR}/wing.yaml"
 else
   echo "      配置已存在，跳过"
+fi
+
+# Write knowledge env file if configured
+if [ -n "$OBSIDIAN_VAULT" ]; then
+  cat > "${CONFIG_DIR}/knowledge.env" <<EOF
+OBSIDIAN_VAULT=${OBSIDIAN_VAULT}
+ENABLE_VOICE_CORRECTION=${ENABLE_VOICE}
+EOF
+  echo "      已创建知识库环境: ${CONFIG_DIR}/knowledge.env"
 fi
 echo ""
 
@@ -121,9 +159,14 @@ echo "    twg -list              列出所有模块"
 echo "    twg -resolve pro       查看 pro 套餐模块"
 echo "    twg -tiers             查看套餐对比"
 echo "    wing-guard -version    查看羽翼防护版本"
+echo "    knowledge -version     查看知识大脑版本"
 echo ""
 echo "  启用羽翼防护:"
 echo "    在 TSG config.json 中添加:"
 echo '    {"wing": {"mode": "tier", "tier": "pro"}}'
+echo ""
+echo "  知识库 + Obsidian:"
+echo "    设置环境变量 OBSIDIAN_VAULT=/path/to/vault"
+echo "    knowledge -vault /path/to/vault"
 echo ""
 echo "  文档: https://github.com/${REPO}"
