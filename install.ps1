@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = "Stop"
 $repo = "HP-jh/TarsWingGuard"
-$version = if ($env:VERSION) { $env:VERSION } else { "0.1.0" }
+$version = if ($env:VERSION) { $env:VERSION } else { "0.2.0" }
 $installDir = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { "$env:LOCALAPPDATA\TarsWingGuard" }
 
 # Detect platform

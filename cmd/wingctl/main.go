@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/HP-jh/tars-update"
+
 	"github.com/HP-jh/TarsWingGuard/internal/version"
 	"github.com/HP-jh/TarsWingGuard/pkg/catalog"
 	"github.com/HP-jh/TarsWingGuard/pkg/config"
@@ -15,6 +17,12 @@ import (
 )
 
 func main() {
+	// Subcommand routing
+	if len(os.Args) >= 2 && os.Args[1] == "update" {
+		handleUpdate(os.Args[2:])
+		return
+	}
+
 	var (
 		catalogPath = flag.String("catalog", "wing.yaml", "Path to wing catalog YAML")
 		tsghConfig  = flag.String("tsg-config", "", "Path to TSG config.json (loads wing section)")
@@ -97,7 +105,66 @@ func main() {
 	}
 
 	flag.Usage()
+	fmt.Fprintf(os.Stderr, "\nSubcommands:\n  update check    Check for newer version\n  update apply    Download and apply update\n  update rollback Rollback to previous version\n")
 	os.Exit(1)
+}
+
+func handleUpdate(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: wingctl update <check|apply|rollback>")
+		os.Exit(1)
+	}
+	cmd := args[0]
+
+	u := update.NewUpdater("twg", version.Version, "HP-jh", "TarsWingGuard")
+
+	switch cmd {
+	case "check":
+		result := u.Check()
+		if result.Error != nil {
+			// Try fallback
+			stable, err := u.FallbackToStable()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Check failed and no stable version cached: %v\n", result.Error)
+				os.Exit(1)
+			}
+			fmt.Printf("GitHub unreachable. Cached stable version: %s\n", stable)
+			os.Exit(0)
+		}
+		if result.HasUpdate {
+			fmt.Printf("Update available: %s -> %s\n", result.Current.String(), result.Latest.String())
+			fmt.Printf("Asset: %s\n", result.AssetName)
+			fmt.Printf("Release: %s\n", result.Release.HTMLURL)
+		} else {
+			fmt.Printf("Already up to date: %s\n", result.Current.String())
+		}
+	case "apply":
+		result := u.Check()
+		if result.Error != nil {
+			fmt.Fprintf(os.Stderr, "Check failed: %v\n", result.Error)
+			os.Exit(1)
+		}
+		if !result.HasUpdate {
+			fmt.Println("No update available.")
+			os.Exit(0)
+		}
+		fmt.Printf("Downloading %s -> %s ...\n", result.Current.String(), result.Latest.String())
+		if err := u.Apply(result); err != nil {
+			fmt.Fprintf(os.Stderr, "Apply failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Update applied successfully. Please restart wingctl.")
+	case "rollback":
+		if err := u.Rollback(); err != nil {
+			fmt.Fprintf(os.Stderr, "Rollback failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Rollback successful. Please restart wingctl.")
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown update command: %q\n", cmd)
+		fmt.Fprintln(os.Stderr, "Usage: wingctl update <check|apply|rollback>")
+		os.Exit(1)
+	}
 }
 
 func printModules(cat *catalog.Catalog, asJSON bool) {

@@ -1,6 +1,6 @@
 .PHONY: all build test clean install cross release
 
-VERSION := 0.1.0
+VERSION := 0.2.0
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS := -X github.com/HP-jh/TarsWingGuard/internal/version.Commit=$(COMMIT) \

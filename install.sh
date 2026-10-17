@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: curl -fsSL https://raw.githubusercontent.com/HP-jh/TarsWingGuard/main/install.sh | bash
 
 REPO="HP-jh/TarsWingGuard"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.0}"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 # Detect platform
@@ -168,5 +168,10 @@ echo ""
 echo "  知识库 + Obsidian:"
 echo "    设置环境变量 OBSIDIAN_VAULT=/path/to/vault"
 echo "    knowledge -vault /path/to/vault"
+echo ""
+echo "  自动更新:"
+echo "    twg update check     检查新版本"
+echo "    twg update apply     下载并应用更新"
+echo "    twg update rollback  回退到上一版本"
 echo ""
 echo "  文档: https://github.com/${REPO}"

@@ -146,7 +146,7 @@ func TestWingctlVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("wingctl version: %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "0.1.0") {
-		t.Errorf("version output missing 0.1.0:\n%s", out)
+	if !strings.Contains(string(out), "0.2.0") {
+		t.Errorf("version output missing 0.2.0:\n%s", out)
 	}
 }

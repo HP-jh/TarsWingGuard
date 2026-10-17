@@ -224,12 +224,33 @@ TarsWingGuard/
 | `HP-jh/TarsEnterprise` | 企业版模块 (B36) |
 | `HP-jh/TarsOpenClawSandbox` | 智能体沙箱模块 (B37) |
 
+## Auto Update
+
+```bash
+# 检查新版本
+wingctl update check
+
+# 下载并应用更新
+wingctl update apply
+
+# 回退到上一版本
+wingctl update rollback
+```
+
+自动更新引擎基于独立模块 `github.com/HP-jh/tars-update`：
+- 启动时自动检测（不阻塞）
+- GitHub Releases API 版本比对
+- SHA256SUMS 校验
+- 原子替换 + 旧二进制备份
+- GitHub 不可用时回退 `~/.tars/stable_versions.json`
+
 ## 路线图
 
 - **v0.1.0** ✅ 仓库骨架 + 14 模块 catalog + tier 解析器 + wing-guard/knowledge 双 MCP demo + 安装向导
-- **v0.2.x** 接入 B33 完成的 30+ 版本能力（逐模块上线）
-- **v0.3.0** 接入 B36 TarsEnterprise 企业版
-- **v0.4.0** 接入 B37 OpenClawSandbox 智能体沙箱
+- **v0.2.0** ✅ 自动更新（tars-update 集成）+ `wingctl update check/apply/rollback`
+- **v0.3.x** 接入 B33 完成的 30+ 版本能力（逐模块上线）
+- **v0.4.0** 接入 B36 TarsEnterprise 企业版
+- **v0.5.0** 接入 B37 OpenClawSandbox 智能体沙箱
 - **v1.0.0** 收官：红蓝对抗 + 用户文档 + 营销站
 
 ## 价格锚定
