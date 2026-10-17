@@ -1,0 +1,43 @@
+# TarsWingGuard 模块配置示例
+# 复制为 wing.yaml 并按需调整
+
+version: "0.1.0"
+schema: wing/v1
+core:
+  name: TarsWingCore
+  description: 我的网关核心
+  version: "0.1.0"
+
+modules:
+  # 基础层（默认开启，无需配置）
+  - id: core-waf
+    name: "核心防火墙"
+    version: "0.1.0"
+    tier: basic
+    transport: stdio
+    command: tsg-core-waf
+
+  # 羽翼层（填 1 个参数解锁）
+  - id: wing-guard
+    name: "羽翼防护"
+    version: "0.1.0"
+    tier: pro
+    transport: stdio
+    command: wing-guard
+    deps: [core-waf]
+
+  - id: knowledge
+    name: "知识大脑"
+    version: "0.1.0"
+    tier: pro
+    transport: sse
+    command: tars-wing-knowledge
+
+  # 旗舰层（ultimate 专属）
+  - id: extreme
+    name: "极致档"
+    version: "0.1.0"
+    tier: ultimate
+    transport: stdio
+    command: tars-wing-extreme
+    deps: [wing-guard]

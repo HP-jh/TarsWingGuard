@@ -1,0 +1,138 @@
+version: "0.1.0"
+schema: wing/v1
+core:
+  name: TarsWingCore
+  description: |
+    核心防御开箱即用：WAF 基础 / 限流 / RBAC / 审计 / 沙箱默认开启。
+    羽翼为可选加成，填 1 个参数即可解锁高级模块。
+  version: "0.1.0"
+
+modules:
+  # ── Basic tier (core, always available) ──────────────────────────────
+  - id: core-waf
+    name: "核心防火墙"
+    description: "基础 WAF 规则、IP 黑白名单、速率限制"
+    version: "0.1.0"
+    tier: basic
+    transport: stdio
+    command: tsg-core-waf
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+    doc_url: "https://github.com/HP-jh/TarsSecureGuard/wiki/WAF"
+
+  - id: core-rbac
+    name: "核心权限"
+    description: "基于角色的访问控制（RBAC）基础实现"
+    version: "0.1.0"
+    tier: basic
+    transport: stdio
+    command: tsg-core-rbac
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  - id: core-audit
+    name: "核心审计"
+    description: "请求审计日志与哈希链完整性校验"
+    version: "0.1.0"
+    tier: basic
+    transport: stdio
+    command: tsg-core-audit
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  # ── Pro tier (羽翼防护 — 一键解锁) ──────────────────────────────────
+  - id: wing-guard
+    name: "羽翼防护"
+    description: "高级 WAF + RASP + 零信任 + 极致档威胁检测"
+    version: "0.1.0"
+    tier: pro
+    transport: stdio
+    command: wing-guard
+    deps: [core-waf]
+    repo_url: "https://github.com/HP-jh/TarsWingGuard"
+    doc_url: "https://github.com/HP-jh/TarsWingGuard/wiki/wing-guard"
+
+  - id: knowledge
+    name: "知识大脑"
+    description: "RAG 检索增强 + Mem0 记忆 + 工作流编排"
+    version: "0.1.0"
+    tier: pro
+    transport: sse
+    command: tars-wing-knowledge
+    env:
+      - name: MEM0_API_KEY
+        value: "${MEM0_API_KEY}"
+    repo_url: "https://github.com/HP-jh/TarsWingKnowledge"
+
+  - id: vision
+    name: "视觉雷达"
+    description: "UI-TARS Bridge + 截图分析 + 自动化点击"
+    version: "0.1.0"
+    tier: pro
+    transport: streamable
+    command: tars-wing-vision
+    repo_url: "https://github.com/HP-jh/TarsWingVision"
+
+  - id: multi-channel
+    name: "多渠道网关"
+    description: "IM / Email / Webhook 统一接入网关"
+    version: "0.1.0"
+    tier: pro
+    transport: stdio
+    command: tars-wing-channel
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  - id: whiteboard
+    name: "画板工作流"
+    description: "Mermaid / PlantUML / SVG 渲染与协作"
+    version: "0.1.0"
+    tier: pro
+    transport: sse
+    command: tars-wing-whiteboard
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  - id: monitor
+    name: "监控雷达"
+    description: "Prometheus 指标 + Grafana 看板导出"
+    version: "0.1.0"
+    tier: pro
+    transport: stdio
+    command: tars-wing-monitor
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  # ── Ultimate tier (旗舰加成) ────────────────────────────────────────
+  - id: extreme
+    name: "极致档"
+    description: "深度防御模式：全规则集 + 行为分析 + 自动响应"
+    version: "0.1.0"
+    tier: ultimate
+    transport: stdio
+    command: tars-wing-extreme
+    deps: [wing-guard]
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  - id: orchestration
+    name: "协作编排"
+    description: "多智能体协作编排（LobeHub 7 点架构）"
+    version: "0.1.0"
+    tier: ultimate
+    transport: streamable
+    command: tars-wing-orchestration
+    deps: [knowledge, multi-channel]
+    repo_url: "https://github.com/HP-jh/TarsSecureGuard"
+
+  - id: enterprise
+    name: "企业版"
+    description: "TarsEnterprise 企业级扩展（SSO / 审计合规 / 组织管理）"
+    version: "0.1.0"
+    tier: ultimate
+    transport: sse
+    command: tars-wing-enterprise
+    deps: [core-rbac, core-audit]
+    repo_url: "https://github.com/HP-jh/TarsEnterprise"
+
+  - id: agent-sandbox
+    name: "智能体沙箱"
+    description: "gVisor + seccomp 智能体隔离沙箱（OpenClaw）"
+    version: "0.1.0"
+    tier: ultimate
+    transport: stdio
+    command: tars-wing-sandbox
+    repo_url: "https://github.com/HP-jh/TarsOpenClawSandbox"
