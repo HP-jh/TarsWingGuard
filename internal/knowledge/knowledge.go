@@ -236,15 +236,155 @@ func (kb *KnowledgeBase) Search(query string) SearchResult {
 	}
 }
 
+// SearchByTag finds documents that have all the specified tags.
+func (kb *KnowledgeBase) SearchByTag(tags []string) SearchResult {
+	kb.mu.RLock()
+	defer kb.mu.RUnlock()
+
+	if len(tags) == 0 {
+		return SearchResult{Query: "tag:", Results: nil, Count: 0}
+	}
+
+	// Find intersection of all tag indices
+	var candidates map[string]bool
+	for i, tag := range tags {
+		tag = strings.ToLower(tag)
+		ids, ok := kb.index["#"+tag]
+		if !ok {
+			return SearchResult{Query: "tag:" + strings.Join(tags, ","), Results: nil, Count: 0}
+		}
+		if i == 0 {
+			candidates = make(map[string]bool)
+			for _, id := range ids {
+				candidates[id] = true
+			}
+		} else {
+			newSet := make(map[string]bool)
+			for _, id := range ids {
+				if candidates[id] {
+					newSet[id] = true
+				}
+			}
+			candidates = newSet
+		}
+	}
+
+	var results []DocMatch
+	for id := range candidates {
+		doc := kb.docs[id]
+		if doc == nil {
+			continue
+		}
+		results = append(results, DocMatch{
+			Document: *doc,
+			Score:    float64(len(tags)),
+			Snippet:  makeSnippet(doc.Content, ""),
+		})
+	}
+
+	return SearchResult{
+		Query:   "tag:" + strings.Join(tags, ","),
+		Results: results,
+		Count:   len(results),
+	}
+}
+
+// FuzzySearch finds documents using edit-distance fuzzy matching.
+func (kb *KnowledgeBase) FuzzySearch(query string, maxDist int) SearchResult {
+	kb.mu.RLock()
+	defer kb.mu.RUnlock()
+
+	if maxDist <= 0 {
+		maxDist = 2
+	}
+
+	corrected := kb.voc.Correct(query)
+	queryWords := tokenize(corrected)
+
+	scores := make(map[string]float64)
+	for id, doc := range kb.docs {
+		docWords := tokenize(doc.Title + " " + doc.Content)
+		matchScore := 0.0
+		for _, qw := range queryWords {
+			for _, dw := range docWords {
+				dist := levenshtein(qw, dw)
+				if dist == 0 {
+					matchScore += 3.0 // exact match
+				} else if dist <= maxDist {
+					matchScore += float64(maxDist-dist+1) * 0.5 // fuzzy match
+				}
+			}
+		}
+		if matchScore > 0 {
+			scores[id] = matchScore
+		}
+	}
+
+	var results []DocMatch
+	for id, score := range scores {
+		doc := kb.docs[id]
+		snippet := makeSnippet(doc.Content, corrected)
+		results = append(results, DocMatch{
+			Document: *doc,
+			Score:    score,
+			Snippet:  snippet,
+		})
+	}
+
+	// Sort by score desc
+	for i := 0; i < len(results); i++ {
+		for j := i + 1; j < len(results); j++ {
+			if results[j].Score > results[i].Score {
+				results[i], results[j] = results[j], results[i]
+			}
+		}
+	}
+
+	return SearchResult{
+		Query:   "fuzzy:" + corrected,
+		Results: results,
+		Count:   len(results),
+	}
+}
+
+// levenshtein computes the edit distance between two strings.
+func levenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+	prev := make([]int, lb+1)
+	curr := make([]int, lb+1)
+	for j := 0; j <= lb; j++ {
+		prev[j] = j
+	}
+	for i := 1; i <= la; i++ {
+		curr[0] = i
+		for j := 1; j <= lb; j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			curr[j] = min(curr[j-1]+1, min(prev[j]+1, prev[j-1]+cost))
+		}
+		prev, curr = curr, prev
+	}
+	return prev[lb]
+}
+
 func (kb *KnowledgeBase) Status() map[string]any {
 	kb.mu.RLock()
 	defer kb.mu.RUnlock()
 	return map[string]any{
 		"module":     "knowledge",
-		"version":    "0.1.0",
+		"version":    "0.3.0",
 		"vault_path": kb.vaultPath,
 		"docs":       len(kb.docs),
 		"index_keys": len(kb.index),
+		"features":   []string{"search", "voice_correction", "tag_filter", "fuzzy_search"},
 	}
 }
 
@@ -280,6 +420,29 @@ func (kb *KnowledgeBase) Tools() []ToolDef {
 				"properties": map[string]any{},
 			},
 		},
+		{
+			Name:        "knowledge_search_by_tag",
+			Description: "Search documents by tags (all tags must match)",
+			Schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "List of tags to filter by"},
+				},
+				"required": []string{"tags"},
+			},
+		},
+		{
+			Name:        "knowledge_fuzzy_search",
+			Description: "Fuzzy search with typo tolerance using Levenshtein distance",
+			Schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"query":    map[string]any{"type": "string", "description": "Search query (typo-tolerant)"},
+					"max_dist": map[string]any{"type": "integer", "description": "Maximum edit distance (default 2)"},
+				},
+				"required": []string{"query"},
+			},
+		},
 	}
 }
 
@@ -305,6 +468,27 @@ func (kb *KnowledgeBase) Handle(ctx context.Context, name string, args json.RawM
 		return b, nil
 	case "knowledge_status":
 		b, _ := json.Marshal(kb.Status())
+		return b, nil
+	case "knowledge_search_by_tag":
+		var req struct {
+			Tags []string `json:"tags"`
+		}
+		if err := json.Unmarshal(args, &req); err != nil {
+			return nil, fmt.Errorf("invalid search_by_tag args: %w", err)
+		}
+		result := kb.SearchByTag(req.Tags)
+		b, _ := json.Marshal(result)
+		return b, nil
+	case "knowledge_fuzzy_search":
+		var req struct {
+			Query   string `json:"query"`
+			MaxDist int    `json:"max_dist"`
+		}
+		if err := json.Unmarshal(args, &req); err != nil {
+			return nil, fmt.Errorf("invalid fuzzy_search args: %w", err)
+		}
+		result := kb.FuzzySearch(req.Query, req.MaxDist)
+		b, _ := json.Marshal(result)
 		return b, nil
 	default:
 		return nil, fmt.Errorf("unknown tool %q", name)

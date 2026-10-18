@@ -123,3 +123,80 @@ func TestGuardHandleUnknown(t *testing.T) {
 		t.Fatal("expected error for unknown tool")
 	}
 }
+
+func TestGuardScanNoSQL(t *testing.T) {
+	g := New(false)
+	r := g.Scan(ScanRequest{Payload: `{"username": {"$ne": null}}`})
+	found := false
+	for _, th := range r.Threats {
+		if th.Type == "nosql-injection" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected nosql-injection threat, got %v", r.Threats)
+	}
+}
+
+func TestGuardScanSSRF(t *testing.T) {
+	g := New(false)
+	r := g.Scan(ScanRequest{Payload: "http://127.0.0.1/admin"})
+	found := false
+	for _, th := range r.Threats {
+		if th.Type == "ssrf" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected ssrf threat, got %v", r.Threats)
+	}
+}
+
+func TestGuardScanSensitivePath(t *testing.T) {
+	g := New(false)
+	r := g.Scan(ScanRequest{Payload: "正常请求", Path: "/admin/users", Method: "DELETE"})
+	foundPath := false
+	foundMethod := false
+	for _, th := range r.Threats {
+		if th.Type == "sensitive-path" {
+			foundPath = true
+		}
+		if th.Type == "sensitive-method" {
+			foundMethod = true
+		}
+	}
+	if !foundPath {
+		t.Errorf("expected sensitive-path threat, got %v", r.Threats)
+	}
+	if !foundMethod {
+		t.Errorf("expected sensitive-method threat, got %v", r.Threats)
+	}
+}
+
+func TestGuardScanXXE(t *testing.T) {
+	g := New(false)
+	r := g.Scan(ScanRequest{Payload: `<!ENTITY xxe SYSTEM "file:///etc/passwd">`})
+	found := false
+	for _, th := range r.Threats {
+		if th.Type == "xxe" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected xxe threat, got %v", r.Threats)
+	}
+}
+
+func TestGuardScanDoubleEncodedStrict(t *testing.T) {
+	g := New(true)
+	r := g.Scan(ScanRequest{Payload: "%253cscript%253e"})
+	found := false
+	for _, th := range r.Threats {
+		if th.Type == "xss-double-encoded" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected xss-double-encoded in strict mode, got %v", r.Threats)
+	}
+}
