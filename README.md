@@ -264,3 +264,8 @@ wingctl update rollback
 ## License
 
 Apache-2.0
+
+## Changelog
+
+### vx.y.z
+- Version bump with stability improvements
